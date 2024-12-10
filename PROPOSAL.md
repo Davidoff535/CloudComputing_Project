@@ -14,7 +14,8 @@ This project should transform a monolithic messaging application into a microser
 -    **Notification Service**: Subscribes to the message broker for event updates and sends notifications to WebSocket-connected clients in real-time
 -    **Static Resource Provider**: Provides HTML, CSS, js and images
 
-**OpenTelemetry and Jaeger**
+**OpenTelemetry and Jaeger:**
+
 OpenTelemetry: OpenTelemetry is an open-source framework for collecting, processing, and exporting telemetry data like traces, metrics, and logs from applications. It provides libraries and tools to monitor code and send this data to backends.
 We can do this by using a self hosted OpenTelemetry Collector and send the telemetry data from our microservices.
 
@@ -22,9 +23,9 @@ Jaeger: Jaeger is a tracing system used to visualize traces collected from distr
 
 By using OpenTelemetry and Jaeger together, we want to:
 
--    Monitor how the services interact: We can see how the different parts of the system talk to each other and if there are any issues
--    Understand the flow of requests: When a user sends a request, we can follow it step by step through the system to find where something might be slowing down or going wrong
--    Measure key processes: For example, we want to know how long it takes for a user to log in, send a message, or handle a friend request
+-    **Monitor how the services interact**: We can see how the different parts of the system talk to each other and if there are any issues
+-    **Understand the flow of requests**: When a user sends a request, we can follow it step by step through the system to find where something might be slowing down or going wrong
+-    **Measure key processes**: For example, we want to know how long it takes for a user to log in, send a message, or handle a friend request
 
 ### Implementation
 
