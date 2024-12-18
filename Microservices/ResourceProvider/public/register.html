@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>TextChat Registration</title>
+	<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="stylesheets/login_register.css">
+</head>
+
+<body>
+	<div id="app" class="container">
+		<h1>TextChat Register</h1>
+		<form @submit.prevent="registerAxios">
+			<label for="textfield1">Username:</label>
+			<input type="text" id="textfield1" name="textfield1" v-model="username"><br>
+
+			<label for="textfield2">Firstname:</label>
+			<input type="text" id="textfield2" name="textfield2" v-model="firstname"><br>
+
+			<label for="textfield3">Lastname:</label>
+			<input type="text" id="textfield3" name="textfield3" v-model="lastname"><br>
+
+			<label for="textfield4">Password:</label>
+			<input type="password" id="textfield4" name="textfield4" v-model="password"><br>
+
+			<label for="textfield5">Repeat Password:</label>
+			<input type="password" id="textfield4" name="textfield5" v-model="repeat_password"><br>
+
+			<button type="submit" id="submitBtn">Register</button>
+			<label id="status">{{errormessage}}</label>
+			<div class="redirect">Already have an account? <a href="/login">Login!</a></div>
+		</form>
+	</div>
+
+	<script>
+		const { createApp } = Vue;
+
+		createApp({
+			data() {
+				return {
+					username: '',
+					firstname: '',
+					lastname: '',
+					password: '',
+					repeat_password: '',
+					errormessage: ''
+				};
+			},
+			mounted(){
+				if(localStorage.getItem("jwt")){
+					window.location.href = '/';
+				}
+			},
+			methods: {
+				registerAxios() {
+					if (this.password === this.repeat_password) {
+						const url = 'http://localhost:3000/user/register';
+						axios.post(url, { username: this.username, firstname: this.firstname, lastname:this.lastname, password: this.password })
+							.then(response => {
+								const { token, expiresAt } = response.data;
+								localStorage.setItem('jwt', token);
+								localStorage.setItem('expiresAt', expiresAt);
+								window.location.href = '/';
+							})
+							.catch(error => {
+								console.error('Error:', error);
+								const responseMessage = error?.response?.data?.message ?? null;
+								if (responseMessage) {
+									this.errormessage = error.response.data.message;
+								} else {
+									alert(`Registration failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+								}
+							});
+					} else {
+						this.errormessage='Passwords do not match';
+					}
+
+				},
+			}
+		}).mount("#app");
+	</script>
+</body>
+
+</html>

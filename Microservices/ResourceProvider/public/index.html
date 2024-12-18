@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>TextChat</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="stylesheets/style.css">
+  <link rel="stylesheet" type="text/css" href="stylesheets/animations.css">
+</head>
+
+<body>
+  <div id="app">
+    <transition name="fade">
+      <div v-if="showEditDialog" id="profileOverlay" class="overlay">
+        <div class="overlayContent">
+          <span @click="showEditDialog=false" class="overlay_close">&times;</span>
+          <h2>Edit Profile</h2>
+          <form @submit.prevent="updateUser" class="overlay_form">
+            <div class="form-container">
+              <div class="left-column">
+                <label class="overlay_label" for="textfield1">Username:</label>
+                <input class="overlay_input" type="text" name="textfield1" v-model="profile.username" readonly>
+
+                <label class="overlay_label" for="textfield1">Firstname:</label>
+                <input class="overlay_input" type="text" name="textfield1" v-model="profile.firstname">
+
+                <label class="overlay_label" for="textfield2">Lastname:</label>
+                <input class="overlay_input" type="text" name="textfield2" v-model="profile.lastname">
+
+                <label class="overlay_label" for="textfield2">New password:</label>
+                <input class="overlay_input" type="password" name="textfield2" v-model="profile.newPW">
+
+                <label class="overlay_label" for="textfield2">Repeat new password:</label>
+                <input class="overlay_input" type="password" name="textfield2" v-model="profile.repeatNewPW">
+
+                <label class="overlay_label" for="textfield2">Old password:</label>
+                <input class="overlay_input" type="password" name="textfield2" v-model="profile.oldPW">
+              </div>
+              <div class="right-column">
+                <label class="overlay_label" for="textfield2">Profile picture:</label><br>
+                <div class="image-container-big">
+                  <img id="profile-pic" class="picture-select"
+                    :src="profile.picture ? profile.picture : '/images/avatar.png'"
+                    onerror="this.src='/images/avatar.png'" alt="Profile Picture"
+                    onclick="document.getElementById('fileInput').click();">
+                </div>
+                <input accept="image/*" type="file" id="fileInput" style="display: none;"
+                  @change="previewProfilePictue">
+
+              </div>
+            </div>
+            <button class="overlay_button" type="submit">Save</button>
+            <label class="overlay_status">{{updateError}}</label>
+          </form>
+        </div>
+      </div>
+    </transition>
+    <aside>
+      <transition name="slide">
+        <div class="requests" v-if="showRequests">
+          <div class="flex">
+            <button @click="enableRequests(false)" class="topBarButton"> <img draggable="false" width="25"
+                src="/images/arrow_back.png" alt="Cross"></button>
+            <h1>Friend Requests</h1>
+          </div>
+          <input v-model="requestName" v-on:keyup.enter="sendFriendRequest" id="friendrequestInput" type="text"
+            placeholder="Send Friend Request">
+          <label id="errorLabel">{{requestError}}</label>
+          <section id="chats">
+            <h2>Incoming</h2>
+            <transition-group name="list" tag="div">
+              <div v-for="request in incoming_friend_requests" :key="request" class="chat unselectable">
+                <span class="name">{{request.firstname}} {{request.lastname}}</span>
+                <div class="buttons">
+                  <button @click="acceptFriendRequest(request)" class="topBarButton"> <img draggable="false" width="25"
+                      src="/images/checkmark.png" alt="Tick"></button>
+                  <button @click="declineFriendRequest(request)" class="topBarButton"> <img draggable="false" width="25"
+                      src="/images/cross.png" alt="Cross"></button>
+                </div>
+              </div>
+            </transition-group>
+            <h2>Outgoing</h2>
+            <transition-group name="list" tag="div">
+              <div v-for="request in outgoing_friend_requests" :key="request" class="chat unselectable">
+                <span class="name">{{request.firstname}} {{request.lastname}}</span>
+                <div class="buttons">
+                  <button @click="deleteFriendRequest(request)" class="topBarButton"> <img draggable="false" width="25"
+                      src="/images/cross.png" alt="Cross"></button>
+                </div>
+              </div>
+            </transition-group>
+
+          </section>
+        </div>
+      </transition>
+      <div class="splitDiv">
+        <h1>Chats</h1>
+        <div class="flex">
+          <button @click="enableRequests(true)" class="topBarButton"> <img draggable="false" width="25"
+              src="/images/add_user.png" alt="Cross"></button>
+          <div class="dropDiv flex">
+            <button class="dropbtn topBarButton"><img draggable="false" width="27" src="/images/options.png"
+                alt="Cross">
+            </button>
+            <div class="dropdown">
+              <div @click="requestUser">Edit Profile</div>
+              <div @click="resetJWT">Logout</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="chats">
+        <transition-group name="list" tag="div">
+          <div v-for="chat in chats" :key="chat" class="chat unselectable" :class="selectedChat==chat ? 'selected' : ''"
+            @click="selectChat(chat)">
+            <div class="image-container">
+              <img draggable="false" class="rounded-image" draggable="false" width="50"
+                :src="chat.profilePicture ? chat.profilePicture : '/images/avatar.png'"
+                onerror="this.src='/images/avatar.png'" alt="Profile Picture">
+            </div>
+            <div class="flexColumn">
+              <div class="name">{{chat.firstname}} {{chat.lastname}}</div>
+              <div v-if="chat.lastMessage" class="inline">
+                <img v-if="!chat.lastMessage.incoming" draggable="false" draggable="false" width="15"
+                  :src="chat.lastMessage.read ? '/images/double_tick_blue.png' : '/images/double_tick.png'"
+                  alt="Profile Picture" style="align-self: center;">
+                <div class="smallMessage">
+                  {{chat.lastMessage.text}}
+                </div>
+              </div>
+            </div>
+            <div v-if="chat.unreadCount>0" class="circle">{{chat.unreadCount}}</div>
+          </div>
+        </transition-group>
+      </section>
+    </aside>
+
+
+
+    <main v-if="selectedChat!=null">
+      <div id="topBar" class="chat unselectable">
+        <div class="image-container">
+          <img draggable="false" draggable="false"
+            :src="selectedChat.profilePicture ? selectedChat.profilePicture : '/images/avatar.png'"
+            onerror="this.src='/images/avatar.png'" alt="Profile Picture">
+        </div>
+        <span class="name">{{selectedChat.firstname}} {{selectedChat.lastname}}</span>
+      </div>
+      <div id="chatArea">
+        <transition-group name="list" tag="div">
+          <div v-for="message in messages" :key="message">
+            <pre><div class="message" :class="message.incoming ? 'received' : 'sent'">{{message.text}}</div></pre>
+            <div class="timestamp" :class="message.incoming ? 'right' : 'left'">
+              <img v-if="!message.incoming" draggable="false" draggable="false" width="15"
+                :src="message.read ? '/images/double_tick_blue.png' : '/images/double_tick.png'" alt="Profile Picture">
+              {{formattedTimestamp(message.timestamp)}}
+            </div>
+          </div>
+        </transition-group>
+      </div>
+
+
+
+      <div id="messageInputContainer">
+        <textarea @keydown.enter.exact.prevent="sendMessage()" v-model="messageText" id="messageInput"
+          placeholder="New Message"></textarea>
+        <button @click="sendMessage()" id="sendMessageButton"><img draggable="false" width="30"
+            src="/images/arrow_send.png" alt="Arrow"></button>
+      </div>
+    </main>
+  </div>
+  <script>
+    const { createApp } = Vue
+
+    createApp({
+      data: function () {
+        return {
+          showRequests: false,
+          showEditDialog: false,
+          requestName: "",
+          requestError: "",
+          selectedChat: null,
+          messageText: "",
+          chats: [],
+          incoming_friend_requests: [],
+          outgoing_friend_requests: [],
+          messages: [],
+          profile: {
+            username: "",
+            firstname: "",
+            lastname: "",
+            newPW: "",
+            repeatNewPW: "",
+            oldPW: "",
+          },
+          updateError: "",
+          jwt: { // Retrieve JWT from local storage
+            token: localStorage.getItem("jwt"),
+            expiresAt: localStorage.getItem("expiresAt") ? new Date(+localStorage.getItem("expiresAt")) : null
+          }
+        }
+      },
+      mounted() {
+        this.setUpWebsocket();
+        this.requestAllFriends();
+        this.requestAllOutgoingFriendRequests();
+        this.requestAllIncomingFriendRequests();
+      },
+      methods: {
+        setUpWebsocket() {
+          const ws = new WebSocket('ws://localhost:3001', this.jwt.token);
+
+          ws.onopen = () => {
+            console.log('Connected to the WebSocket server');
+          };
+
+          ws.onmessage = (messageEvent) => {
+            try {
+              const transmission = JSON.parse(messageEvent.data);
+              if (transmission.type === "newMessage") {
+                const message = transmission.value;
+                message.incoming = true;
+                console.log('Received message:', message);
+                const index = this.chats.findIndex(chat => chat.username === message.fromUsername);
+                this.chats[index].lastMessage = message;
+                if (this.selectedChat.username === message.fromUsername) {
+                  message.read = true;
+                  this.messages.push(message);
+                  this.markAsRead(message);
+                } else {
+                  this.chats[index].unreadCount++;
+                }
+                this.sortChats();
+              } else if (transmission.type === "newFriendRequest") {
+                const request = transmission.value;
+                console.log('Received request:', request);
+                this.incoming_friend_requests.unshift(request);
+              } else if (transmission.type === "deleteFriendRequest") {
+                const request = transmission.value;
+                const index = this.incoming_friend_requests.findIndex(req => req.username === request.username);
+                if (index !== -1) {
+                  this.incoming_friend_requests.splice(index, 1);
+                  console.log('Deleted request:', request);
+                } else {
+                  console.log('Request to delete not found: ', request);
+                }
+              } else if (transmission.type === "declineFriendRequest") {
+                const request = transmission.value;
+                const index = this.outgoing_friend_requests.findIndex(req => req.username === request.username);
+                if (index !== -1) {
+                  this.outgoing_friend_requests.splice(index, 1);
+                  console.log('Declined request:', request);
+                } else {
+                  console.log('Request to decline not found: ', request);
+                }
+              } else if (transmission.type === "acceptFriendRequest") {
+                const request = transmission.value;
+                const index = this.outgoing_friend_requests.findIndex(req => req.username === request.username);
+                if (index !== -1) {
+                  this.outgoing_friend_requests.splice(index, 1);
+                  console.log('Accepted request:', request);
+                  request.unreadCount = 0;
+                  this.chats.push(request);
+                } else {
+                  console.log('Request to accept not found: ', request);
+                }
+              } else if (transmission.type === "markMessageRead") {
+                const msg = transmission.value;
+                this.chats.forEach(chat => {
+                  if (chat.lastMessage && chat.lastMessage._id === msg._id) {
+                    chat.lastMessage.read = true;
+                  }
+                });
+                this.messages.forEach(message => {
+                  if (message._id === msg._id) {
+                    message.read = true;
+                  }
+                });
+              } else if (transmission.type === "userUpdated") {
+                const newUser = transmission.value;
+                this.chats.forEach(chat => {
+                  if (chat.username === newUser.username) {
+                    chat.firstname = newUser.firstname;
+                    chat.lastname = newUser.lastname;
+                    chat.profilePicture = newUser.profilePicture;
+                  }
+                });
+                if (this.selectedChat.username === newUser.username) {
+                  this.selectedChat.firstname = newUser.firstname;
+                  this.selectedChat.lastname = newUser.lastname;
+                  this.selectChat.profilePicture = newUser.profilePicture;
+                }
+              }
+            } catch (error) {
+              console.error('Failed to parse message:', error);
+            }
+          };
+
+          ws.onclose = () => {
+            window.location.href = '/login';
+          };
+        },
+        authorizationHeader() {
+          return this.jwt.token ? { 'authorization': `Bearer ${this.jwt.token}` } : {};
+        },
+        requestAllFriends() {
+          axios.get(`http://localhost:3000/api/friends/all`, { headers: this.authorizationHeader() })
+            .then(response => {
+              if (response.data.friends.length > 0) {
+                response.data.friends.sort((a, b) => {
+                  if (!b.lastMessage && !a.lastMessage) {
+                    return 1;
+                  }
+                  if (b.lastMessage == null) {
+                    return -1;
+                  }
+                  if (a.lastMessage == null) {
+                    return 1;
+                  }
+                  return (new Date(b.lastMessage.timestamp)) - (new Date(a.lastMessage.timestamp));
+                });
+                this.chats.push(...response.data.friends);
+                this.selectChat(response.data.friends[0]);
+              }
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Friendlist request failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        requestAllOutgoingFriendRequests() {
+          axios.get(`http://localhost:3000/api/friends/outgoingRequests`, { headers: this.authorizationHeader() })
+            .then(response => {
+              this.outgoing_friend_requests.push(...response.data.requests);
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Loading outgoing friendrequests failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+
+        requestAllIncomingFriendRequests() {
+          axios.get(`http://localhost:3000/api/friends/incomingRequests`, { headers: this.authorizationHeader() })
+            .then(response => {
+              this.incoming_friend_requests.push(...response.data.requests);
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Loading incoming friendrequests failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        sendFriendRequest() {
+          axios.post(`http://localhost:3000/api/friends/sendRequest`, { receiver_name: this.requestName }, { headers: this.authorizationHeader() })
+            .then(response => {
+              this.outgoing_friend_requests.unshift({ firstname: response.data.firstname, lastname: response.data.lastname, username: response.data.username });
+              this.requestError = "";
+              this.requestName = "";
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                const responseMessage = error?.response?.data?.message ?? null;
+                if (responseMessage) {
+                  this.requestError = error.response.data.message;
+                } else {
+                  alert(`Freindrequest failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+                }
+              }
+            });
+        },
+        deleteFriendRequest(request) {
+          axios.delete(`http://localhost:3000/api/friends/cancelRequest/${request.username}`, { headers: this.authorizationHeader() })
+            .then(response => {
+              const index = this.outgoing_friend_requests.indexOf(request);
+              this.outgoing_friend_requests.splice(index, 1);
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Friendrequest deletion failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        declineFriendRequest(request) {
+          axios.delete(`http://localhost:3000/api/friends/declineRequest/${request.username}`, { headers: this.authorizationHeader() })
+            .then(response => {
+              const index = this.incoming_friend_requests.indexOf(request);
+              this.incoming_friend_requests.splice(index, 1);
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Friendrequest decline failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        acceptFriendRequest(request) {
+          axios.put(`http://localhost:3000/api/friends/acceptRequest/${request.username}`, {}, { headers: this.authorizationHeader() })
+            .then(response => {
+              const index = this.incoming_friend_requests.indexOf(request);
+              this.incoming_friend_requests.splice(index, 1);
+              request.unreadCount = 0;
+              this.chats.push(request);
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Friendrequest decline failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        sendMessage() {
+          const text = this.messageText.trim();
+          if (!text) {
+            return;
+          }
+          axios.post('http://localhost:3000/api/messages/send', {
+            toUsername: this.selectedChat.username,
+            text: text
+          }, {
+            headers: this.authorizationHeader()
+          })
+            .then(response => {
+              this.messages.push(response.data.msg);
+              this.messageText = "";
+              const index = this.chats.findIndex(chat => chat.username === this.selectedChat.username);
+              this.chats[index].lastMessage = response.data.msg;
+              this.sortChats();
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Message send failed\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        requestMessages() {
+          axios.get(`http://localhost:3000/api/messages/all/${this.selectedChat.username}`, {
+            headers: this.authorizationHeader()
+          })
+            .then(response => {
+              this.messages = response.data.messages.reverse();
+              this.markAllMessagesAsRead();
+              const index = this.chats.findIndex(chat => chat.username === this.selectedChat.username);
+              this.chats[index].unreadCount = 0;
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Failed to retrieve messages\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        requestUser() {
+          axios.get(`http://localhost:3000/user/getInfo`, {
+            headers: this.authorizationHeader()
+          })
+            .then(response => {
+              this.profile.username = response.data.user.username;
+              this.profile.firstname = response.data.user.firstname;
+              this.profile.lastname = response.data.user.lastname;
+              this.profile.picture = response.data.user.profilePicture;
+              this.profile.newPW = "";
+              this.profile.repeatNewPW = "";
+              this.profile.oldPW = "";
+              this.updateError = "";
+              this.showEditDialog = true;
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Failed to retrieve user information\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        previewProfilePictue(e) {
+          const reader = new FileReader()
+          reader.readAsDataURL(e.target.files[0])
+          reader.onload = e => {
+            this.profile.picture = e.target.result
+            console.log(this.image)
+          }
+        },
+        updateUser() {
+          if (this.profile.newPW != this.profile.repeatNewPW) {
+            this.updateError = "New passwords do not match";
+            return;
+          }
+          const updatedUserData = {
+            firstname: this.profile.firstname,
+            lastname: this.profile.lastname,
+            newPW: this.profile.newPW,
+            oldPW: this.profile.oldPW,
+            profilePicture: this.profile.picture
+          };
+          axios.put(`http://localhost:3000/user/update`, updatedUserData, {
+            headers: this.authorizationHeader()
+          })
+            .then(response => {
+              this.showEditDialog = false;
+            })
+            .catch(error => {
+              const responseMessage = error?.response?.data?.message ?? null;
+              if (responseMessage) {
+                this.updateError = error.response.data.message;
+              } else {
+                if (error.response && error.response.status === 401) {
+                  this.resetJWT();
+                } else {
+                  alert(`Failed to update user information\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+                }
+              }
+
+            });
+        },
+        markAsRead(message) {
+          axios.put(`http://localhost:3000/api/messages/markAsRead/${message._id}`, {}, {
+            headers: this.authorizationHeader()
+          })
+            .then(response => {
+              message.read = true;
+            })
+            .catch(error => {
+              if (error.response && error.response.status === 401) {
+                this.resetJWT();
+              } else {
+                alert(`Failed to mark message as read\nCode: ${error.code}\nMessage: ${error.message}\nResponse: ${JSON.stringify(error.response, null, 2)}`);
+              }
+            });
+        },
+        resetJWT() {
+          localStorage.removeItem('jwt');
+          localStorage.removeItem('expiresAt');
+          window.location.href = '/login';
+        },
+        selectChat(chat) {
+          this.selectedChat = chat;
+          this.requestMessages();
+          this.messageText = "";
+        },
+        sortChats() {
+          this.chats.sort((a, b) => {
+            if (!b.lastMessage && !a.lastMessage) {
+              return 1;
+            }
+            if (!b.lastMessage) {
+              return -1;
+            }
+            if (!a.lastMessage) {
+              return 1;
+            }
+            return (new Date(b.lastMessage.timestamp)) - (new Date(a.lastMessage.timestamp));
+          });
+        },
+        markAllMessagesAsRead() {
+          this.messages.forEach(message => {
+            if (message.incoming) {
+              if (!message.read) {
+                this.markAsRead(message);
+              } else {
+                return;
+              }
+            }
+          });
+        },
+        enableRequests(show) {
+          this.requestName = "";
+          this.requestError = "";
+          if (show) {
+            this.showRequests = true;
+          } else {
+            this.showRequests = false;
+          }
+        },
+        formattedTimestamp(timestamp) {
+          const date = new Date(timestamp);
+
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+
+          const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
+
+          return formattedDate;
+        }
+      }
+    }).mount('#app')
+  </script>
+
+</body>
+
+</html>

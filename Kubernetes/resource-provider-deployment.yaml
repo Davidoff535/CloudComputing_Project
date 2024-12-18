@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-provider
+  namespace: default
+  labels:
+    app: resource-provider
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: resource-provider
+  template:
+    metadata:
+      labels:
+        app: resource-provider
+    spec:
+      containers:
+      - name: resource-provider
+        image: gcr.io/textchat-0/resource-provider:v1
+        ports:
+        - containerPort: 3000

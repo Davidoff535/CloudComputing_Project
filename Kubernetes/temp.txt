@@ -1,0 +1,16 @@
+env:
+        - name: DB_PW
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: username
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: jwt_secret
