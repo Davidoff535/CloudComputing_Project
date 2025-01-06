@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: default
+  labels:
+    app: jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+      - name: jaeger
+        image: jaegertracing/all-in-one:1.44
+        ports:
+        - containerPort: 5775   # UDP port for jaeger-agent
+        - containerPort: 6831   # UDP port for jaeger-agent
+        - containerPort: 6832   # TCP port for jaeger-agent
+        - containerPort: 14250  # gRPC for jaeger-collector
+        - containerPort: 14268  # HTTP for jaeger-collector
+        - containerPort: 16686  # Jaeger UI
+        - containerPort: 9411   # Zipkin compatibility
