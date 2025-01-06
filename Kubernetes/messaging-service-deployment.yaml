@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: messaging-service
-        image: gcr.io/textchat-0/messaging-service:v1
+        image: gcr.io/textchat-0/messaging-service:v6
         ports:
         - containerPort: 3000
         env:
@@ -36,3 +36,17 @@ spec:
             secretKeyRef:
               name: credentials
               key: jwt_secret
+        - name: RABBITMQ_HOST
+          value: "rabbitmq.default.svc.cluster.local"
+        - name: RABBITMQ_PORT
+          value: "5672"
+        - name: RABBITMQ_USER
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: rabbitmq-username
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: rabbitmq-password
