@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
       - name: resource-provider
-        image: gcr.io/textchat-0/resource-provider:v1
+        image: gcr.io/textchat-0/resource-provider:v6
         ports:
         - containerPort: 3000

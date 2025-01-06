@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /user
+        pathType: Prefix
+        backend:
+          service:
+            name: authentication-service
+            port:
+              number: 80
+      - path: /friends
+        pathType: Prefix
+        backend:
+          service:
+            name: friendship-service
+            port:
+              number: 80
+      - path: /messages
+        pathType: Prefix
+        backend:
+          service:
+            name: messaging-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: resource-provider
+            port:
+              number: 80

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messaging-service
+  namespace: default
+  labels:
+    app: messaging-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: messaging-service
+  template:
+    metadata:
+      labels:
+        app: messaging-service
+    spec:
+      containers:
+      - name: messaging-service
+        image: gcr.io/textchat-0/messaging-service:v1
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_PW
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: username
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: jwt_secret

@@ -174,7 +174,7 @@
   </div>
   <script>
     const { createApp } = Vue
-
+    const HOST = '34.8.60.10'
     createApp({
       data: function () {
         return {
@@ -211,7 +211,7 @@
       },
       methods: {
         setUpWebsocket() {
-          const ws = new WebSocket('ws://localhost:3001', this.jwt.token);
+          const ws = new WebSocket(`ws://${HOST}:3001`, this.jwt.token);
 
           ws.onopen = () => {
             console.log('Connected to the WebSocket server');
@@ -307,7 +307,7 @@
           return this.jwt.token ? { 'authorization': `Bearer ${this.jwt.token}` } : {};
         },
         requestAllFriends() {
-          axios.get(`http://localhost:3000/api/friends/all`, { headers: this.authorizationHeader() })
+          axios.get(`http://${HOST}/friends/all`, { headers: this.authorizationHeader() })
             .then(response => {
               if (response.data.friends.length > 0) {
                 response.data.friends.sort((a, b) => {
@@ -335,7 +335,7 @@
             });
         },
         requestAllOutgoingFriendRequests() {
-          axios.get(`http://localhost:3000/api/friends/outgoingRequests`, { headers: this.authorizationHeader() })
+          axios.get(`http://${HOST}/friends/outgoingRequests`, { headers: this.authorizationHeader() })
             .then(response => {
               this.outgoing_friend_requests.push(...response.data.requests);
             })
@@ -349,7 +349,7 @@
         },
 
         requestAllIncomingFriendRequests() {
-          axios.get(`http://localhost:3000/api/friends/incomingRequests`, { headers: this.authorizationHeader() })
+          axios.get(`http://${HOST}/friends/incomingRequests`, { headers: this.authorizationHeader() })
             .then(response => {
               this.incoming_friend_requests.push(...response.data.requests);
             })
@@ -362,7 +362,7 @@
             });
         },
         sendFriendRequest() {
-          axios.post(`http://localhost:3000/api/friends/sendRequest`, { receiver_name: this.requestName }, { headers: this.authorizationHeader() })
+          axios.post(`http://${HOST}/friends/sendRequest`, { receiver_name: this.requestName }, { headers: this.authorizationHeader() })
             .then(response => {
               this.outgoing_friend_requests.unshift({ firstname: response.data.firstname, lastname: response.data.lastname, username: response.data.username });
               this.requestError = "";
@@ -382,7 +382,7 @@
             });
         },
         deleteFriendRequest(request) {
-          axios.delete(`http://localhost:3000/api/friends/cancelRequest/${request.username}`, { headers: this.authorizationHeader() })
+          axios.delete(`http://${HOST}/friends/cancelRequest/${request.username}`, { headers: this.authorizationHeader() })
             .then(response => {
               const index = this.outgoing_friend_requests.indexOf(request);
               this.outgoing_friend_requests.splice(index, 1);
@@ -396,7 +396,7 @@
             });
         },
         declineFriendRequest(request) {
-          axios.delete(`http://localhost:3000/api/friends/declineRequest/${request.username}`, { headers: this.authorizationHeader() })
+          axios.delete(`http://${HOST}/friends/declineRequest/${request.username}`, { headers: this.authorizationHeader() })
             .then(response => {
               const index = this.incoming_friend_requests.indexOf(request);
               this.incoming_friend_requests.splice(index, 1);
@@ -410,7 +410,7 @@
             });
         },
         acceptFriendRequest(request) {
-          axios.put(`http://localhost:3000/api/friends/acceptRequest/${request.username}`, {}, { headers: this.authorizationHeader() })
+          axios.put(`http://${HOST}/friends/acceptRequest/${request.username}`, {}, { headers: this.authorizationHeader() })
             .then(response => {
               const index = this.incoming_friend_requests.indexOf(request);
               this.incoming_friend_requests.splice(index, 1);
@@ -430,7 +430,7 @@
           if (!text) {
             return;
           }
-          axios.post('http://localhost:3000/api/messages/send', {
+          axios.post(`http://${HOST}/messages/send`, {
             toUsername: this.selectedChat.username,
             text: text
           }, {
@@ -452,7 +452,7 @@
             });
         },
         requestMessages() {
-          axios.get(`http://localhost:3000/api/messages/all/${this.selectedChat.username}`, {
+          axios.get(`http://${HOST}/messages/all/${this.selectedChat.username}`, {
             headers: this.authorizationHeader()
           })
             .then(response => {
@@ -470,7 +470,7 @@
             });
         },
         requestUser() {
-          axios.get(`http://localhost:3000/user/getInfo`, {
+          axios.get(`http://${HOST}/friends/getInfo`, {
             headers: this.authorizationHeader()
           })
             .then(response => {
@@ -512,7 +512,7 @@
             oldPW: this.profile.oldPW,
             profilePicture: this.profile.picture
           };
-          axios.put(`http://localhost:3000/user/update`, updatedUserData, {
+          axios.put(`http://${HOST}/friends/update`, updatedUserData, {
             headers: this.authorizationHeader()
           })
             .then(response => {
@@ -533,7 +533,7 @@
             });
         },
         markAsRead(message) {
-          axios.put(`http://localhost:3000/api/messages/markAsRead/${message._id}`, {}, {
+          axios.put(`http://${HOST}/messages/markAsRead/${message._id}`, {}, {
             headers: this.authorizationHeader()
           })
             .then(response => {

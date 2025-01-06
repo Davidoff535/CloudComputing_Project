@@ -27,7 +27,7 @@
 
 	<script>
 		const { createApp } = Vue;
-
+		const HOST = '34.8.60.10'
 		createApp({
 			data() {
 				return {
@@ -43,7 +43,7 @@
 			},
 			methods: {
 				loginAxios() {
-					const url = 'http://localhost:3000/user/login';
+					const url = `http://${HOST}/user/login`;
 					axios.post(url, { username: this.username, password: this.password })
 						.then(response => {
 							const { token, expiresAt } = response.data;

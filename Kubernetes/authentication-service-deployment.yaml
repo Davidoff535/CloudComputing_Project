@@ -17,6 +17,22 @@ spec:
     spec:
       containers:
       - name: authentication-service
-        image: gcr.io/textchat-0/authentication-service:v1
+        image: gcr.io/textchat-0/authentication-service:v13
         ports:
         - containerPort: 3000
+        env:
+        - name: DB_PW
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: username
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: jwt_secret

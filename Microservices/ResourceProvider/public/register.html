@@ -36,7 +36,7 @@
 
 	<script>
 		const { createApp } = Vue;
-
+		const HOST = '34.8.60.10'
 		createApp({
 			data() {
 				return {
@@ -56,7 +56,7 @@
 			methods: {
 				registerAxios() {
 					if (this.password === this.repeat_password) {
-						const url = 'http://localhost:3000/user/register';
+						const url = `http://${HOST}/user/register`;
 						axios.post(url, { username: this.username, firstname: this.firstname, lastname:this.lastname, password: this.password })
 							.then(response => {
 								const { token, expiresAt } = response.data;

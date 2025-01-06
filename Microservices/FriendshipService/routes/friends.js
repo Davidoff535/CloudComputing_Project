@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
-const ws = require('../websocketManager');
+var db = require('../database');
+var rabbit = require('../rabbitmq');
+let channel; // Persistent channel
+let connection; // Persistent connection
 
 // Middleware to check if user is logged in
 function isLoggedIn(req, res, next) {
@@ -15,7 +17,7 @@ function isLoggedIn(req, res, next) {
   next();
 }
 
-router.get('/friends/all', isLoggedIn, async (req, res) => {
+router.get('/all', isLoggedIn, async (req, res) => {
   try {
     const user = await db.user.findUserByUsername(req.jwtPayload.username);
     const friendsOnly = await db.friends.findAllFriendsOfUser(req.jwtPayload.username);
@@ -28,7 +30,7 @@ router.get('/friends/all', isLoggedIn, async (req, res) => {
   }
 });
 
-router.get('/friends/outgoingRequests', isLoggedIn, async (req, res) => {
+router.get('/outgoingRequests', isLoggedIn, async (req, res) => {
   try {
     const requests = await db.friends.findAllOutgoingFriendRequests(req.jwtPayload.username);
     res.send({ status: 'success', message: 'Request successful', requests: requests });
@@ -38,7 +40,7 @@ router.get('/friends/outgoingRequests', isLoggedIn, async (req, res) => {
   }
 });
 
-router.get('/friends/incomingRequests', isLoggedIn, async (req, res) => {
+router.get('/incomingRequests', isLoggedIn, async (req, res) => {
   try {
     const requests = await db.friends.findAllIncomingFriendRequests(req.jwtPayload.username);
     res.send({ status: 'success', message: 'Request successful', requests: requests });
@@ -49,7 +51,7 @@ router.get('/friends/incomingRequests', isLoggedIn, async (req, res) => {
 });
 
 
-router.post('/friends/sendRequest', isLoggedIn, async (req, res) => {
+router.post('/sendRequest', isLoggedIn, async (req, res) => {
   try {
     const receiver = req.body.receiver_name;
     const from = await db.user.findUserByUsername(req.jwtPayload.username);
@@ -71,7 +73,7 @@ router.post('/friends/sendRequest', isLoggedIn, async (req, res) => {
       res.status(409).send({ message: 'Already friends' });
     } else {
       await db.friends.createFriendRequest(from, to);
-      ws.sendFriendRequestToClient({ firstname: from.firstname, lastname: from.lastname, username: from.username }, to.username);
+      rabbit.sendMessageToQueue({type:'newFriendRequest', value:{firstname: from.firstname, lastname: from.lastname, username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Request successful', firstname: to.firstname, lastname: to.lastname, username: to.username });
     }
   } catch (error) {
@@ -80,7 +82,7 @@ router.post('/friends/sendRequest', isLoggedIn, async (req, res) => {
   }
 });
 
-router.delete('/friends/cancelRequest/:friendship_name', isLoggedIn, async (req, res) => {
+router.delete('/cancelRequest/:friendship_name', isLoggedIn, async (req, res) => {
   try {
     const from = await db.user.findUserByUsername(req.jwtPayload.username);
     const to = await db.user.findUserByUsername(req.params.friendship_name);
@@ -88,7 +90,7 @@ router.delete('/friends/cancelRequest/:friendship_name', isLoggedIn, async (req,
     if (deleted === "failed") {
       res.status(404).send({ message: 'Friend Request does not exist' });
     } else {
-      ws.sendFriendRequestDeletionToClient({ username: from.username }, to.username);
+      rabbit.sendMessageToQueue({type:'deleteFriendRequest', value:{username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Deletion successful' });
     }
   } catch (error) {
@@ -97,7 +99,7 @@ router.delete('/friends/cancelRequest/:friendship_name', isLoggedIn, async (req,
   }
 });
 
-router.delete('/friends/declineRequest/:friendship_name', isLoggedIn, async (req, res) => {
+router.delete('/declineRequest/:friendship_name', isLoggedIn, async (req, res) => {
   try {
     const to = await db.user.findUserByUsername(req.jwtPayload.username);
     const from = await db.user.findUserByUsername(req.params.friendship_name);
@@ -105,7 +107,7 @@ router.delete('/friends/declineRequest/:friendship_name', isLoggedIn, async (req
     if (deleted === "failed") {
       res.status(404).send({ message: 'Friend Request does not exist' });
     } else {
-      ws.sendFriendRequestDeclineToClient({ username: to.username }, from.username);
+      rabbit.sendMessageToQueue({type:'declineFriendRequest', value:{username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Deletion successful' });
     }
   } catch (error) {
@@ -114,7 +116,7 @@ router.delete('/friends/declineRequest/:friendship_name', isLoggedIn, async (req
   }
 });
 
-router.put('/friends/acceptRequest/:friendship_name', isLoggedIn, async (req, res) => {
+router.put('/acceptRequest/:friendship_name', isLoggedIn, async (req, res) => {
   try {
     const from = await db.user.findUserByUsername(req.jwtPayload.username);
     const to = await db.user.findUserByUsername(req.params.friendship_name);
@@ -122,7 +124,7 @@ router.put('/friends/acceptRequest/:friendship_name', isLoggedIn, async (req, re
     if (accepted === "failed") {
       res.status(404).send({ message: 'Friend Request does not exist' });
     } else {
-      ws.sendFriendRequestAcceptToClient({ firstname: from.firstname, lastname: from.lastname, username: from.username }, to.username);
+      rabbit.sendMessageToQueue({type:'acceptFriendRequest', value:{firstname: from.firstname, lastname: from.lastname, username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Accept successful' });
     }
   } catch (error) {
@@ -131,79 +133,64 @@ router.put('/friends/acceptRequest/:friendship_name', isLoggedIn, async (req, re
   }
 });
 
-router.post('/messages/send', isLoggedIn, async (req, res) => {
+
+router.get('/getInfo', isLoggedIn, async function (req, res) {
   try {
-    const fromUser = await db.user.findUserByUsername(req.jwtPayload.username);
-    const { toUsername, text } = req.body;
-    if (!toUsername || !text) {
-      return res.status(400).send({ message: 'Recipient username and message text are required' });
-    }
-
-    const toUser = await db.user.findUserByUsername(toUsername);
-
-    if (!toUser) {
-      return res.status(404).send({ message: 'Recipient not found' });
-    }
-
-    const msg = await db.messages.createMessage(fromUser, toUser, text);
-    msg.fromUsername = fromUser.username;
-    ws.sendMessageToClient(msg, toUser.username);
-    res.send({ status: 'success', message: 'Message sent successfully', msg: msg });
-  } catch (error) {
-    res.status(500).send('Error sending message');
-    console.error(error);
-  }
-});
-
-router.get('/messages/all/:toUsername', isLoggedIn, async (req, res) => {
-  try {
-    const fromUser = await db.user.findUserByUsername(req.jwtPayload.username);
-    const { toUsername } = req.params;
-
-    if (!toUsername) {
-      return res.status(400).send({ message: 'Recipient username is required' });
-    }
-
-    const toUser = await db.user.findUserByUsername(toUsername);
-
-    if (!toUser) {
-      return res.status(404).send({ message: 'Recipient not found' });
-    }
-
-    const messages = await db.messages.getAllMessages(fromUser, toUser);
-
-    res.send({ status: 'success', messages: messages });
-  } catch (error) {
-    res.status(500).send('Error retrieving messages');
-    console.error(error);
-  }
-});
-
-router.put('/messages/markAsRead/:messageID', isLoggedIn, async (req, res) => {
-  try {
-    const user = await db.user.findUserByUsername(req.jwtPayload.username);
-    const { messageID } = req.params;
-    if (!messageID) {
-      return res.status(400).send({ message: 'Message id is required' });
-    }
-
-    const message = await db.messages.markMessageAsRead(messageID, user);
-    if (message) {
-      try {
-        const to = await db.user.findUserByID(message.sender_id);
-        ws.sendMarkMessageReadToClient(message, to.username);
-      } catch (error) {
-        console.error(error);
+      const user = await db.user.findUserByUsername(req.jwtPayload.username);
+      if (!user) {
+          return res.status(404).send({ status: 'fail', message: 'User not found' });
       }
-      res.send({ status: 'success' });
-    } else {
-      return res.status(404).send({ message: 'Message not found' });
-    }
+
+      const { password, ...userInfo } = user;
+      res.send({ status: 'success', user: userInfo });
   } catch (error) {
-    res.status(500).send('Error marking message as read');
-    console.error(error);
+      res.status(500).send({ status: 'fail', message: 'Server error' });
   }
 });
 
+module.exports = router;
+
+router.put('/update', isLoggedIn, async function (req, res) {
+  const { firstname, lastname, newPW, oldPW, profilePicture } = req.body;
+  try {
+      const user = await db.user.findUserByUsername(req.jwtPayload.username);
+      if (!user) {
+          return res.status(404).send({ status: 'fail', message: 'User not found' });
+      }
+      if (!oldPW) {
+          return res.status(400).send({ status: 'fail', message: 'No old password provided' });
+      }
+      if (!(await bcrypt.compare(oldPW, user.password))) {
+          return res.status(401).send({ status: 'fail', message: 'Invalid old password' });
+      }
+
+
+      const updatedData = {};
+      if (firstname) updatedData.firstname = firstname;
+      if (lastname) updatedData.lastname = lastname;
+      if (profilePicture) updatedData.profilePicture = profilePicture;
+      if (newPW) updatedData.password = await bcrypt.hash(newPW, saltRounds);
+
+      await db.user.updateUserByUsername(user.username, updatedData);
+      await notifyAllFriends(user);
+      res.send({ status: 'success', message: 'User information updated successfully' });
+  } catch (error) {
+      res.status(500).send({ status: 'fail', message: 'Server error' });
+  }
+});
+
+async function notifyAllFriends(user) {
+  try {
+      const { password, ...userInfo } = await db.user.findUserByUsername(user.username);
+      const friends = await db.friends.findAllFriendsOfUser(user.username);
+      friends.forEach(friend => {
+          //ws.sendUserUpdatedToClient(userInfo, friend.username);
+          rabbit.sendMessageToQueue({type:'userUpdated', value: userInfo, to: to.username });
+
+      });
+  } catch (error) {
+      console.error(error);
+  }
+}
 
 module.exports = router;
