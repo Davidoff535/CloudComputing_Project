@@ -1,3 +1,5 @@
+require('./tracing');
+
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
@@ -6,6 +8,7 @@ const cors = require('cors');
 
 
 var usersRouter = require('./routes/users');
+require('console');
 
 var app = express();
 app.use(cors());
