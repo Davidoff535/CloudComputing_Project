@@ -1,7 +1,7 @@
 const amqp = require('amqplib');
 
 let channel;
-let connection; 
+let connection;
 
 async function connectRabbitMQ() {
     try {
@@ -12,22 +12,18 @@ async function connectRabbitMQ() {
             password: process.env.RABBITMQ_PASSWORD,
         });
 
-        
         channel = await connection.createChannel();
 
-        
-        const queue = 'friendship-events';
-        await channel.assertQueue(queue, { durable: false });
+        const exchange = 'friendship-exchange';
+        await channel.assertExchange(exchange, 'fanout', { durable: false });
 
-        console.log('Connected to RabbitMQ and channel is ready.');
+        console.log('Connected to RabbitMQ and fanout exchange is ready.');
 
-        
         connection.on('close', () => {
             console.error('RabbitMQ connection closed. Attempting to reconnect...');
             reconnectRabbitMQ();
         });
 
-        
         connection.on('error', (err) => {
             console.error('RabbitMQ connection error:', err);
             reconnectRabbitMQ();
@@ -49,14 +45,16 @@ async function reconnectRabbitMQ() {
     connectRabbitMQ();
 }
 
-async function sendMessageToQueue(message) {
+async function sendMessageToExchange(message) {
     try {
-        while (!channel) {
+        if (!channel) {
             throw new Error('RabbitMQ channel is not initialized.');
         }
-        const queue = 'friendship-events';
-        channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)));
-        console.log('Message sent:', message);
+        
+        const exchange = 'friendship-exchange';
+
+        channel.publish(exchange, '', Buffer.from(JSON.stringify(message)));
+        console.log('Message published to exchange:', message);
     } catch (err) {
         console.error('Failed to send message to RabbitMQ:', err);
     }
@@ -64,4 +62,4 @@ async function sendMessageToQueue(message) {
 
 connectRabbitMQ();
 
-module.exports = { sendMessageToQueue };
+module.exports = { sendMessageToExchange };

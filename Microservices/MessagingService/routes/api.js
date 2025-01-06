@@ -31,7 +31,7 @@ router.post('/send', isLoggedIn, async (req, res) => {
 
     const msg = await db.messages.createMessage(fromUser, toUser, text);
     msg.fromUsername = fromUser.username;
-    rabbit.sendMessageToQueue({type:'newMessage', value:msg, to: toUser.username });
+    rabbit.sendMessageToExchange({type:'newMessage', value:msg, to: toUser.username });
     res.send({ status: 'success', message: 'Message sent successfully', msg: msg });
   } catch (error) {
     res.status(500).send('Error sending message');
@@ -75,7 +75,7 @@ router.put('/markAsRead/:messageID', isLoggedIn, async (req, res) => {
     if (message) {
       try {
         const to = await db.user.findUserByID(message.sender_id);
-        rabbit.sendMessageToQueue({type:'markMessageRead', value:message, to: to.username });
+        rabbit.sendMessageToExchange({type:'markMessageRead', value:message, to: to.username });
       } catch (error) {
         console.error(error);
       }

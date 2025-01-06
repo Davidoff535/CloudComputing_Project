@@ -73,7 +73,7 @@ router.post('/sendRequest', isLoggedIn, async (req, res) => {
       res.status(409).send({ message: 'Already friends' });
     } else {
       await db.friends.createFriendRequest(from, to);
-      rabbit.sendMessageToQueue({type:'newFriendRequest', value:{firstname: from.firstname, lastname: from.lastname, username: from.username}, to: to.username });
+      rabbit.sendMessageToExchange({type:'newFriendRequest', value:{firstname: from.firstname, lastname: from.lastname, username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Request successful', firstname: to.firstname, lastname: to.lastname, username: to.username });
     }
   } catch (error) {
@@ -90,7 +90,7 @@ router.delete('/cancelRequest/:friendship_name', isLoggedIn, async (req, res) =>
     if (deleted === "failed") {
       res.status(404).send({ message: 'Friend Request does not exist' });
     } else {
-      rabbit.sendMessageToQueue({type:'deleteFriendRequest', value:{username: from.username}, to: to.username });
+      rabbit.sendMessageToExchange({type:'deleteFriendRequest', value:{username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Deletion successful' });
     }
   } catch (error) {
@@ -107,7 +107,7 @@ router.delete('/declineRequest/:friendship_name', isLoggedIn, async (req, res) =
     if (deleted === "failed") {
       res.status(404).send({ message: 'Friend Request does not exist' });
     } else {
-      rabbit.sendMessageToQueue({type:'declineFriendRequest', value:{username: from.username}, to: to.username });
+      rabbit.sendMessageToExchange({type:'declineFriendRequest', value:{username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Deletion successful' });
     }
   } catch (error) {
@@ -124,7 +124,7 @@ router.put('/acceptRequest/:friendship_name', isLoggedIn, async (req, res) => {
     if (accepted === "failed") {
       res.status(404).send({ message: 'Friend Request does not exist' });
     } else {
-      rabbit.sendMessageToQueue({type:'acceptFriendRequest', value:{firstname: from.firstname, lastname: from.lastname, username: from.username}, to: to.username });
+      rabbit.sendMessageToExchange({type:'acceptFriendRequest', value:{firstname: from.firstname, lastname: from.lastname, username: from.username}, to: to.username });
       res.send({ status: 'success', message: 'Accept successful' });
     }
   } catch (error) {
@@ -185,7 +185,7 @@ async function notifyAllFriends(user) {
       const friends = await db.friends.findAllFriendsOfUser(user.username);
       friends.forEach(friend => {
           //ws.sendUserUpdatedToClient(userInfo, friend.username);
-          rabbit.sendMessageToQueue({type:'userUpdated', value: userInfo, to: to.username });
+          rabbit.sendMessageToExchange({type:'userUpdated', value: userInfo, to: to.username });
 
       });
   } catch (error) {
