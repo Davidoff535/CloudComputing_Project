@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: friendship-service
-        image: gcr.io/textchat-0/friendship-service:v10
+        image: gcr.io/textchat-0/friendship-service:v12
         ports:
         - containerPort: 3000
         env:

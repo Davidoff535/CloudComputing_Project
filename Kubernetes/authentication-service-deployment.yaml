@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: authentication-service
-        image: gcr.io/textchat-0/authentication-service:v13
+        image: gcr.io/textchat-0/authentication-service:v30
         ports:
         - containerPort: 3000
         env:
@@ -36,3 +36,5 @@ spec:
             secretKeyRef:
               name: credentials
               key: jwt_secret
+        - name: OTEL_LOG_LEVEL
+          value: "debug"

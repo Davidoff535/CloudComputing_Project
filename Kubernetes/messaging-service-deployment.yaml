@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: messaging-service
-        image: gcr.io/textchat-0/messaging-service:v8
+        image: gcr.io/textchat-0/messaging-service:v9
         ports:
         - containerPort: 3000
         env:
