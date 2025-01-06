@@ -3,7 +3,7 @@ var bcrypt = require('bcrypt');
 var router = express.Router();
 var db = require('../database');
 var jwt = require('jsonwebtoken');
-const { trace } = require('@opentelemetry/api');
+const { trace, SpanStatusCode } = require('@opentelemetry/api');
 
 const tracer = trace.getTracer('auth-service');
 

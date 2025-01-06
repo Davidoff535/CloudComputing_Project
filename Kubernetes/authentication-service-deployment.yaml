@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: authentication-service
-        image: gcr.io/textchat-0/authentication-service:v13
+        image: gcr.io/textchat-0/authentication-service:v20
         ports:
         - containerPort: 3000
         env:
