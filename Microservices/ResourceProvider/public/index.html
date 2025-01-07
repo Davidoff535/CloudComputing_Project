@@ -174,7 +174,7 @@
   </div>
   <script>
     const { createApp } = Vue
-    const HOST = '34.8.60.10'
+    const HOST = '34.54.74.142'
     createApp({
       data: function () {
         return {
@@ -211,7 +211,7 @@
       },
       methods: {
         setUpWebsocket() {
-          const ws = new WebSocket(`ws://${HOST}:3001`, this.jwt.token);
+          const ws = new WebSocket(`ws://${HOST}/websockets`, this.jwt.token);
 
           ws.onopen = () => {
             console.log('Connected to the WebSocket server');
@@ -300,7 +300,7 @@
           };
 
           ws.onclose = () => {
-            window.location.href = '/login';
+            this.setUpWebsocket();
           };
         },
         authorizationHeader() {

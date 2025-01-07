@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
+const http = require('http')
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) {
@@ -7,8 +8,9 @@ if (!jwtSecret) {
   process.exit(1);
 }
 
-const wss = new WebSocket.Server({ port: 3001 });
+
 const clients = new Map();
+
 
 
 function verifyJWT(token, callback) {
@@ -21,7 +23,22 @@ function verifyJWT(token, callback) {
   });
 }
 
+
+// Create an HTTP server
+const server = http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('ok');
+  } else {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
+
+const wss = new WebSocket.Server({ server });
+
 wss.on('connection', (ws, req) => {
+  console.log("New websocket connection")
   const token = req.headers['sec-websocket-protocol'];
 
   if (!token) {
@@ -48,10 +65,13 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+server.listen(80, () => {
+  console.log('Server is listening on port 80');
+});
 
 function sendEventToClient(message, toUsername) {
   try {
-    const messageJSON = JSON.stringify({ type: 'newMessage', value: message });
+    const messageJSON = JSON.stringify(message);
     const client = clients.get(toUsername);
     if (client) {
       if (client.readyState === WebSocket.OPEN) {

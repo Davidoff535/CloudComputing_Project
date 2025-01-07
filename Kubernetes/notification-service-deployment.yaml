@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: default
+  labels:
+    app: notification-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: gcr.io/textchat-0/notification-service:v17
+        ports:
+        - containerPort: 80
+        env:
+        - name: DB_PW
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: username
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: credentials
+              key: jwt_secret
+        - name: RABBITMQ_HOST
+          value: "rabbitmq.default.svc.cluster.local"
+        - name: RABBITMQ_PORT
+          value: "5672"
+        - name: RABBITMQ_USER
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: rabbitmq-username
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: rabbitmq-password

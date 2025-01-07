@@ -9,6 +9,13 @@ spec:
   rules:
   - http:
       paths:
+      - path: /websockets
+        pathType: Prefix
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 80
       - path: /user
         pathType: Prefix
         backend:
