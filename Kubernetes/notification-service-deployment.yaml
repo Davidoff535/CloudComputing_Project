@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: notification-service
-        image: gcr.io/textchat-0/notification-service:v17
+        image: gcr.io/textchat-0/notification-service:v20
         ports:
         - containerPort: 80
         env:

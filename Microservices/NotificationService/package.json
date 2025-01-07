@@ -6,9 +6,19 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-jaeger": "^1.30.0",
+    "@opentelemetry/instrumentation": "^0.57.0",
+    "@opentelemetry/instrumentation-http": "^0.57.0",
+    "@opentelemetry/propagator-jaeger": "^1.30.0",
+    "@opentelemetry/resources": "^1.30.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
+    "@opentelemetry/sdk-trace-node": "^1.30.0",
+    "@opentelemetry/semantic-conventions": "^1.28.0",
     "amqplib": "^0.10.5",
     "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
+    "opentelemetry-instrumentation-express": "^0.41.0",
     "ws": "^8.17.0"
   }
 }

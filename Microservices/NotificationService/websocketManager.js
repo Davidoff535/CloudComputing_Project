@@ -1,3 +1,4 @@
+const tracer = require("./tracing")("NotificationService");
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 const http = require('http')
@@ -70,20 +71,35 @@ server.listen(80, () => {
 });
 
 function sendEventToClient(message, toUsername) {
-  try {
-    const messageJSON = JSON.stringify(message);
-    const client = clients.get(toUsername);
-    if (client) {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(messageJSON);
-        console.log(`> Sent message to client: ${client.jwtPayload.username}`);
+  tracer.startActiveSpan('sendEventToClient', (span) => {
+    try {
+      span.setAttribute('message', JSON.stringify(message));
+      span.setAttribute('toUsername', toUsername);
+
+      const messageJSON = JSON.stringify(message);
+      const client = clients.get(toUsername);
+
+      if (client) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(messageJSON);
+          console.log(`> Sent message to client: ${client.jwtPayload.username}`);
+          span.addEvent('Message sent', { username: client.jwtPayload.username });
+        } else {
+          span.addEvent('WebSocket not open', { username: toUsername });
+        }
+      } else {
+        span.addEvent('Client not found', { username: toUsername });
       }
+    } catch (error) {
+      span.recordException(error);
+      console.log(`Failed to send message via websocket`);
+      console.error(error);
+    } finally {
+      span.end();
     }
-  } catch (error) {
-    console.log(`Failed to send message via websocket`);
-    console.error(error);
-  }
+  });
 }
+
 
 module.exports = {
   sendEventToClient,
