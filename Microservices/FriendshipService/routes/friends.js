@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 var db = require('../database');
 var rabbit = require('../rabbitmq');
-let channel; // Persistent channel
-let connection; // Persistent connection
+var bcrypt = require('bcrypt');
 
 // Middleware to check if user is logged in
 function isLoggedIn(req, res, next) {
@@ -175,6 +174,7 @@ router.put('/update', isLoggedIn, async function (req, res) {
       await notifyAllFriends(user);
       res.send({ status: 'success', message: 'User information updated successfully' });
   } catch (error) {
+      console.log(error);
       res.status(500).send({ status: 'fail', message: 'Server error' });
   }
 });
@@ -185,7 +185,7 @@ async function notifyAllFriends(user) {
       const friends = await db.friends.findAllFriendsOfUser(user.username);
       friends.forEach(friend => {
           //ws.sendUserUpdatedToClient(userInfo, friend.username);
-          rabbit.sendMessageToExchange({type:'userUpdated', value: userInfo, to: to.username });
+          rabbit.sendMessageToExchange({type:'userUpdated', value: userInfo, to: friend.username });
 
       });
   } catch (error) {
