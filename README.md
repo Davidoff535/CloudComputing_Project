@@ -104,7 +104,7 @@ This project should transform a monolithic messaging application into a microser
 
     cd ../..
 5. Install RabbitMQ
-    - Replace rabbitmq-secret.yaml with rabbitmq-credentials
+    - Replace placeholders rabbitmq-secret.yaml with rabbitmq-credentials
     ```
     kubectl apply -f Kubernetes/rabbitmq-secret.yaml
 
@@ -115,6 +115,7 @@ This project should transform a monolithic messaging application into a microser
     kubectl apply -f Kubernetes/rabbitmq-service.yaml
 6. Deploy Microservices:
     - Adjust deployment yaml files to correct docker image version
+    - Replace placeholders in secret.yaml with unique jwt secret and mongodb databse credentials
     ```
     kubectl apply -f Kubernetes/secret.yaml
 
